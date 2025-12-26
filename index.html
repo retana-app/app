@@ -1522,8 +1522,61 @@ padding:10px;
       }
       
 .form-control{
-	max-width: 600px;
+  
+	max-width: 100%;
 	
+}
+      .input-with-clear {
+  position: relative;
+  max-width: 600px; /* Adjust as needed */
+}
+
+.input-with-clear .form-control {
+  padding-right: 30px; /* Make space for the clear button */
+}
+
+.clear-button {
+  position: absolute;
+  right: 25px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #ccc; /* Light gray color for the 'x' */
+  font-size: 20px;
+  cursor: pointer;
+  display: none; /* Hide by default */
+}
+
+.clear-button:hover {
+  color: #888; /* Darker on hover */
+}
+      
+      /* Include Font Awesome CSS in your project */
+/* <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> */
+
+.input-with-clear {
+  position: relative;
+  width: 100%;
+}
+
+.input-with-clear .form-control {
+  padding-right: 30px; /* Space for the icon */
+}
+
+.clear-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ccc;
+  cursor: pointer;
+  display: none;
+  font-size: 16px; /* Adjust size as needed */
+}
+
+.clear-icon:hover {
+  color: #888;
 }
     </style>
     
@@ -1861,7 +1914,10 @@ padding:10px;
 
    
   <!-- Filter Input -->
-<center><input id="filterInput" type="text" class="form-control" placeholder="Type ctrl+/ to search... "></center>
+<center><div class="input-with-clear">
+  <input id="filterInput" type="text" class="form-control" placeholder="Type ctrl+/ to search...">
+ <i id="clearInput" class="fas fa-times clear-icon"></i>
+</div></center>
 
 <!-- No Results Message -->
 <div id="noResultsMessage" class="alert alert-warning d-none">No results found. Try searching for <a href="/demov6/add">more apps</a></div>
@@ -5016,51 +5072,82 @@ function isUntrackableDomain(url) {
         
 
 <script>
-document.getElementById('filterInput').addEventListener('input', function () {
-    const filterValue = this.value.toLowerCase();
+// --- New function to encapsulate your filtering logic ---
+function applyCardFilter(filterValue) {
     const cards = document.querySelectorAll('.card-item');
     const sections = document.querySelectorAll('.section-container');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
-    let hasMatch = false; // Flag to track if any cards are visible
-
-    // Clear the search results container
-    searchResultsContainer.innerHTML = '';
-
-    // Track IDs of cards added to prevent duplicates
+    const noResultsMessage = document.getElementById('noResultsMessage'); // Get this element inside the function
+    let hasMatch = false;
     const addedCardIds = new Set();
 
-    cards.forEach(card => {
-        const cardText = card.innerText.toLowerCase();
-        const cardCategory = card.getAttribute('data-category').toLowerCase();
+    searchResultsContainer.innerHTML = ''; // Clear results each time
 
-        // Check if the filter value matches either the card text or category
-        if ((cardText.includes(filterValue) || cardCategory.includes(filterValue)) && 
-            !addedCardIds.has(card.dataset.id)) {
-            
-            hasMatch = true; // A match is found
-            addedCardIds.add(card.dataset.id); // Add the card ID to the set
+    if (filterValue) { // If there's a filter value, process cards for search results
+        cards.forEach(card => {
+            const cardText = card.innerText.toLowerCase();
+            const cardCategory = card.getAttribute('data-category').toLowerCase();
 
-            const clonedCard = card.cloneNode(true); // Clone the card
-            searchResultsContainer.appendChild(clonedCard); // Add to the search results container
+            if ((cardText.includes(filterValue) || cardCategory.includes(filterValue)) &&
+                !addedCardIds.has(card.dataset.id)) {
+                hasMatch = true;
+                addedCardIds.add(card.dataset.id);
+                const clonedCard = card.cloneNode(true);
+                searchResultsContainer.appendChild(clonedCard);
+            }
+        });
+
+        // Show/hide search results or no results message
+        if (hasMatch) {
+            noResultsMessage.classList.add('d-none');
+            searchResultsContainer.classList.remove('d-none');
+            sections.forEach(section => section.classList.add('d-none')); // Hide original sections
+        } else {
+            noResultsMessage.classList.remove('d-none');
+            searchResultsContainer.classList.add('d-none');
+            sections.forEach(section => section.classList.add('d-none')); // Still hide original sections if no results
+        }
+    } else { // No filter value (input is empty) - show original sections
+        noResultsMessage.classList.add('d-none');
+        searchResultsContainer.classList.add('d-none');
+        sections.forEach(section => section.classList.remove('d-none')); // Show original sections
+    }
+}
+// --- End of new function ---
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const filterInput = document.getElementById('filterInput');
+    // Ensure your clear button has the ID 'clearInput' as discussed
+    const clearButton = document.getElementById('clearInput');
+
+    // Initial load: Display all cards by applying an empty filter
+    applyCardFilter('');
+
+    // Listener for typing in the input field
+    filterInput.addEventListener('input', function () {
+        const filterValue = this.value.toLowerCase();
+        applyCardFilter(filterValue); // Call the new function
+
+        // Show/hide clear button
+        if (filterValue.length > 0) {
+            clearButton.style.display = 'block';
+        } else {
+            clearButton.style.display = 'none';
         }
     });
 
-    // Show or hide the "No Results" message based on matches
-    const noResultsMessage = document.getElementById('noResultsMessage');
-    if (hasMatch) {
-        noResultsMessage.classList.add('d-none');
-        searchResultsContainer.classList.remove('d-none');
-        sections.forEach(section => section.classList.add('d-none')); // Hide all sections
-    } else {
-        noResultsMessage.classList.remove('d-none');
-        searchResultsContainer.classList.add('d-none');
-        sections.forEach(section => section.classList.remove('d-none')); // Show all sections
-    }
+    // Listener for the clear (x) button click
+    if (clearButton) { // Check if the button exists to prevent errors
+        clearButton.addEventListener('click', () => {
+            filterInput.value = ''; // Clear the input field
+            clearButton.style.display = 'none'; // Hide the clear button
+            filterInput.focus(); // Keep focus on the input
 
-    // Reset view when no filter is applied
-    if (!filterValue) {
-        searchResultsContainer.classList.add('d-none');
-        sections.forEach(section => section.classList.remove('d-none'));
+            // --- The "re-trigger" fix for clearing ---
+            applyCardFilter(''); // Call the new function with an empty string
+            // This will reset the view to show all original sections
+        });
     }
 });
 
@@ -5368,7 +5455,7 @@ function sheets() {
       // Delay the alert
       setTimeout(function() {
         $('#homepageAlert').fadeIn(); // Fade it in
-      }, 200000); // 3000 milliseconds (3 seconds)
+      }, 3000); // 3000 milliseconds (3 seconds)
 
       $('#dontShowAgain').change(function() {
         if (this.checked) {
